@@ -8,7 +8,7 @@
 <h2 align="center"><a href="https://price-forecasting.streamlit.app/">Ссылка на сайт</a></h2>
 
 <p align="center">
-<img src="./demo.gif" alt="demo GIF" width="90%"></p>
+<img src="./demo.gif" alt="demo GIF" width="100%"></p>
 
 ## Постановка задачи
 
