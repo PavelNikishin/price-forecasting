@@ -1,4 +1,3 @@
-# front_streamlit
 
 import sqlite3
 import numpy as np
@@ -8,8 +7,10 @@ from datetime import datetime, date, timedelta
 import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
+from backtesting import Backtest
 
 from my_functions import All_residuals, get_symbol_list, get_from_db, get_ticker_data, update_history, weekly_forecasting
+from my_strategies import MidTermEstimation, get_data_for_bt
 
 st.set_page_config(layout="wide")
 
@@ -256,6 +257,18 @@ def update_data_if_required(day, con=con):
             weekly_forecasting(con)
 
 
+@st.experimental_singleton() 
+def get_backtest_fig(symbol, model, con=con):
+
+    data = get_data_for_bt(symbol, model, con)
+
+    bt = Backtest(data, MidTermEstimation, 
+                cash=10000, commission=.002,
+                exclusive_orders=True)
+    bt.run(con=con, value_factor=0.25)
+    return bt.plot(open_browser = False)
+
+
 # Beginning
 yesterday = date.today() - timedelta(days=1)
 update_data_if_required(yesterday)
@@ -354,4 +367,36 @@ st.subheader('Метрики')
 
 st.dataframe(residuals_df)
 
-# st.markdown("___")
+st.markdown("___")
+
+st.subheader('Пример использования в торговой стратегии')
+
+st.markdown("""
+    Построим на основании прогноза модели простейшую среднесрочную стратегию. \
+    Будем считать среднесрочным прогнозом среднее значение предсказания цены за следующие 3-6 месяцев.
+    - Открываем позицию, если прогноз на 25% выше/ниже текущей цены
+    - Закрываем, когда цена и прогноз сравнялись
+    """)
+
+# wigets
+bt_filter = st.columns(2)
+
+with bt_filter[0]:
+    selected_bt_symbol_name = st.selectbox('Инструмент', tickers.fullName.values, key='bt_symbol_name')
+
+with bt_filter[1]:
+    selected_bt_model_name = st.selectbox('Модель прогнозирования', models.full_name.values, key='bt_model_name')
+
+# parameters processing
+selected_bt_symbol = tickers[tickers.fullName == selected_bt_symbol_name].index.tolist()[0]
+selected_bt_model = models[models.full_name == selected_bt_model_name].short_name.values[0]
+
+bt_plot = get_backtest_fig(selected_bt_symbol, selected_bt_model)
+
+st.bokeh_chart(bt_plot)
+
+st.markdown("""
+    Результат такой замечательный, потому что мы по факту заглядываем в будущее. Чтобы этого избежать, нужно использовать данные на дату \
+    прогноза. Сейчас результаты записываются на глубину в год, но данных пока недостаточно. За ‘учебный’ период данные получить можно, \
+    но придется менять настройки алгоритмов, либо сделать симуляцию, прогоняя программу по всем расчетным датам. 
+    """)
